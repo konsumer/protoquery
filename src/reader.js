@@ -5,6 +5,8 @@ const WIRE_TYPES = {
   FIXED32: 5
 }
 
+const _dec = new TextDecoder()
+
 // this will read wireetype:0 (or any other varint, which is used in wiretype:2 for example)
 export function readVarint(buffer, position) {
   let result = 0
@@ -87,6 +89,10 @@ export function readPackedFixed64(buffer, position) {
     values.push(readFixed64(buffer, position))
   }
   return values
+}
+
+export function readString(buffer) {
+  return _dec.decode(buffer)
 }
 
 export default function* reader(buf) {

@@ -1,8 +1,6 @@
 /* global describe test expect */
 
-import reader, { readPackedVarint } from '../src/reader.js'
-
-const _dec = new TextDecoder()
+import reader, { readPackedVarint, readString } from '../src/reader.js'
 
 // tests to verify results from hand-parsing:
 // https://protobuf.dev/programming-guides/encoding/
@@ -41,8 +39,7 @@ describe('basic tests from parsing docs', () => {
       expect(wireType).toEqual(2)
       expect(dataByteLength).toEqual(8)
       // wiretype is 2 (len) and I know it's a "string" so parse it like that
-      const s = _dec.decode(data)
-      expect(s).toEqual('testing')
+      expect(readString(data)).toEqual('testing')
     }
   })
 
@@ -83,8 +80,7 @@ describe('basic tests from parsing docs', () => {
       if (fieldNumber === 4) {
         expect(wireType).toEqual(2)
         expect(dataByteLength).toEqual(6)
-        const s = _dec.decode(data)
-        expect(s).toEqual('hello')
+        expect(readString(data)).toEqual('hello')
       }
     }
     expect(counts[4]).toEqual(1)
