@@ -1,23 +1,23 @@
 {
-  "name": "rawprotoparse",
-  "version": "0.0.10",
-  "description": "Very small raw-protobuf parser",
+  "name": "protoquery",
+  "version": "0.0.0",
+  "description": "Query raw protobuf",
   "type": "module",
-  "source": "src/rawproto.js",
+  "source": "src/protoquery.js",
   "exports": {
-    "require": "./dist/rawproto.cjs",
-    "default": "./dist/rawproto.modern.js"
+    "require": "./dist/protoquery.cjs",
+    "default": "./dist/protoquery.modern.js"
   },
-  "main": "./dist/rawproto.cjs",
-  "module": "./dist/rawproto.module.js",
-  "unpkg": "./dist/rawproto.umd.js",
-  "types": "./dist/rawproto.d.ts",
+  "main": "./dist/protoquery.cjs",
+  "module": "./dist/protoquery.module.js",
+  "unpkg": "./dist/protoquery.umd.js",
+  "types": "./dist/protoquery.d.ts",
   "scripts": {
     "test": "vitest --run --globals --reporter verbose",
     "build": "microbundle",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["protobuf", "raw", "parse", "decode", "reverse-engineer", "binary"],
+  "keywords": ["protobuf", "raw", "parse", "decode", "query", "reverse-engineer", "binary"],
   "author": "David Konsumer <konsumer@jetboystudio.com>",
   "license": "MIT",
   "devDependencies": {
@@ -25,12 +25,12 @@
     "vitest": "^1.4.0"
   },
   "bugs": {
-    "url": "https://github.com/konsumer/rawprotoparse/issues"
+    "url": "https://github.com/konsumer/protoquery/issues"
   },
-  "homepage": "https://github.com/konsumer/rawprotoparse#readme",
+  "homepage": "https://github.com/konsumer/protoquery#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/konsumer/rawprotoparse.git"
+    "url": "git+https://github.com/konsumer/protoquery.git"
   },
   "files": ["dist/*"]
 }
