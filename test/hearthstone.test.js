@@ -6,6 +6,7 @@ import { readFile } from 'fs/promises'
 import { getTree, getPath, readString } from '../src/reader.js'
 
 // build an initial array of the data I want to look at
+// do this, and you can use getPath() to get values
 const pb = await readFile(join(dirname(fileURLToPath(import.meta.url)), 'hearthstone.bin'))
 const raw = getTree(pb)
 
