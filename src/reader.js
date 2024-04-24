@@ -173,7 +173,7 @@ export function getPath(raw, bytes, path) {
     } else {
       current = c
       if (!wireMap[current.wireType].includes(t) && t !== 'raw') {
-        throw new Error(`Type wireType ${current.wireType} does not support ${t}.`)
+        throw new Error(`Type wireType ${current.wireType} does not support ${t}. It should be one of these: ${wireMap[current.wireType].join(', ')}`)
       }
       switch (t) {
         case 'raw':
