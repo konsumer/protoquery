@@ -13,18 +13,11 @@
   "unpkg": "./dist/rawproto.umd.js",
   "types": "./dist/rawproto.d.ts",
   "scripts": {
-    "test": "vitest --run --globals",
+    "test": "vitest --run --globals --reporter verbose",
     "build": "microbundle",
     "prepublishOnly": "npm run build"
   },
-  "keywords": [
-    "protobuf",
-    "raw",
-    "parse",
-    "decode",
-    "reverse-engineer",
-    "binary"
-  ],
+  "keywords": ["protobuf", "raw", "parse", "decode", "reverse-engineer", "binary"],
   "author": "David Konsumer <konsumer@jetboystudio.com>",
   "license": "MIT",
   "devDependencies": {
@@ -39,7 +32,5 @@
     "type": "git",
     "url": "git+https://github.com/konsumer/rawprotoparse.git"
   },
-  "files": [
-    "dist/*"
-  ]
+  "files": ["dist/*"]
 }
