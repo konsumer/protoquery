@@ -34,3 +34,9 @@ test('Get value inside another sub-object', () => {
   expect(getPath(d.sub, pb, '1:string')).toEqual('com.blizzard.wtcg.hearthstone')
   expect(getPath(d.sub, pb, '5:string')).toEqual('Hearthstone')
 })
+
+test('Should throw an error on wrong getPath', () => {
+  expect(() => {
+    getPath(raw, pb, '1.2.4.1:var')
+  }).toThrowError('Type wireType 2 does not support var. It should be one of these: string, bytes, packedvar, packed32, packed64')
+})
