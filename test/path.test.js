@@ -38,11 +38,10 @@ test('Repeated Elements', () => {
   expect(getPath(tree, '4:string')).toEqual('hello')
 })
 
-test.skip('Packed Repeated Fields', () => {
+test('Packed Repeated Fields', () => {
   /*
     6: {3 270 86942}
   */
   const tree = getTree([0x32, 0x06, 0x03, 0x8e, 0x02, 0x9e, 0xa7, 0x05])
-  const p = getTree(tree, '6:packedvar')
-  expect(getTree(tree, '6:packedvar')).toEqual([3, 270, 86942])
+  expect(getPath(tree, '6:packedvar')).toEqual([3, 270, 86942])
 })
