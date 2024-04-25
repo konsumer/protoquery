@@ -152,4 +152,4 @@ You can get the structure of the data with another library (like [rawprotoparse]
 }
 ```
 
-You can use that `wireType` to figure it out, and `sub` includes the sub-root for 2 (`LEN`) fields.
+You can use that `wireType`/`fieldNumber` to figure it out, and `sub` includes the sub-root for 2 (`LEN`) fields.
