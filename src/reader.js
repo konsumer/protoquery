@@ -60,7 +60,6 @@ export function readLengthDelimited(buffer, position) {
 
 // this will read a packed array of varints (which will be encoded in a wiretype:2)
 export function readPackedVarint(buffer, position) {
-  console.log('packedVarInt', { buffer, position })
   const length = readVarint(buffer, position)
   let endPosition = position.offset + length
   const values = []
@@ -145,6 +144,49 @@ wireMap[WIRE_TYPES.FIXED64] = ['i64', 'u64', 'double']
 wireMap[WIRE_TYPES.LENGTH_DELIMITED] = ['string', 'bytes', 'packedvar', 'packed32', 'packed64']
 wireMap[WIRE_TYPES.FIXED32] = ['i32', 'u32', 'bool', 'f32']
 
+function handleField(current, t, bytes) {
+  if (!wireMap[current.wireType].includes(t) && t !== 'raw') {
+    throw new Error(`Type wireType ${current.wireType} does not support ${t}. It should be one of these: raw, ${wireMap[current.wireType].join(', ')}`)
+  }
+
+  switch (t) {
+    case 'raw':
+      return current
+    case 'u32':
+    case 'u64':
+    case 'var':
+    case 'bytes':
+      return current.data
+
+    case 'i32':
+      return new DataView(current.data).getInt32(current.position.offset, true)
+
+    case 'bool':
+      return !!current.data
+
+    case 'i64':
+      return new DataView(current.data).getBigInt64(current.position.offset, true)
+
+    case 'f32':
+      return new DataView(current.data).getFloat32(current.position.offset, true)
+
+    case 'double':
+      return new DataView(current.data).getFloat64(current.position.offset, true)
+
+    case 'string':
+      return readString(current.data)
+
+    case 'packedvar':
+      return readPackedVarint(bytes, current.position)
+
+    case 'packed32':
+      return readPackedFixed32(bytes, current.position)
+
+    case 'packed64':
+      return readPackedFixed64(bytes, current.position)
+  }
+}
+
 /*
 This will parse paths to get values from a tree (use getTree())
 Some examples:
@@ -165,6 +207,7 @@ string, bytes, packedvar, packed32, packed64
 export function getPath(raw, path) {
   let current = raw.sub
   const bytes = raw.data
+  const out = []
   for (const l of path.split('.')) {
     let [n, t] = l.split(':')
     n = parseInt(n)
@@ -174,46 +217,8 @@ export function getPath(raw, path) {
       current = c.sub
     } else {
       current = c
-      if (!wireMap[current.wireType].includes(t) && t !== 'raw') {
-        throw new Error(`Type wireType ${current.wireType} does not support ${t}. It should be one of these: raw, ${wireMap[current.wireType].join(', ')}`)
-      }
-
-      switch (t) {
-        case 'raw':
-          return current
-        case 'u32':
-        case 'u64':
-        case 'var':
-        case 'bytes':
-          return current.data
-
-        case 'i32':
-          return new DataView(current.data).getInt32(current.position.offset, true)
-
-        case 'bool':
-          return !!current.data
-
-        case 'i64':
-          return new DataView(current.data).getBigInt64(current.position.offset, true)
-
-        case 'f32':
-          return new DataView(current.data).getFloat32(current.position.offset, true)
-
-        case 'double':
-          return new DataView(current.data).getFloat64(current.position.offset, true)
-
-        case 'string':
-          return readString(current.data)
-
-        case 'packedvar':
-          return readPackedVarint(bytes, current.position)
-
-        case 'packed32':
-          return readPackedFixed32(bytes, current.position)
-
-        case 'packed64':
-          return readPackedFixed64(bytes, current.position)
-      }
+      out.push(handleField(current, t, bytes))
     }
   }
+  return out
 }

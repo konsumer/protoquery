@@ -10,33 +10,33 @@ import { getTree, getPath, readString } from '../src/reader.js'
 const pb = await readFile(join(dirname(fileURLToPath(import.meta.url)), 'hearthstone.bin'))
 const raw = getTree(pb)
 
+test('Should throw an error on wrong getPath', () => {
+  expect(() => {
+    getPath(raw, '1.2.4.1:var')
+  }).toThrowError('Type wireType 2 does not support var. It should be one of these: raw, string, bytes, packedvar, packed32, packed64')
+})
+
 test('Get id with getPath', () => {
-  expect(getPath(raw, '1.2.4.1:string')).toEqual('com.blizzard.wtcg.hearthstone')
+  expect(getPath(raw, '1.2.4.1:string').pop()).toEqual('com.blizzard.wtcg.hearthstone')
 })
 
 test('Get title with getPath', () => {
-  expect(getPath(raw, '1.2.4.5:string')).toEqual('Hearthstone')
+  expect(getPath(raw, '1.2.4.5:string').pop()).toEqual('Hearthstone')
 })
 
 test('Get bytes of a sub-message with getPath', () => {
-  expect(getPath(raw, '1.2.4:bytes').length).toEqual(15241)
+  expect(getPath(raw, '1.2.4:bytes').pop().length).toEqual(15241)
 })
 
 test('Get raw sub-message, including meta, with getPath', () => {
-  const d = getPath(raw, '1.2.4:raw')
+  const d = getPath(raw, '1.2.4:raw').pop()
   expect(d.fieldNumber).toEqual(4)
   expect(d.dataByteLength).toEqual(15243)
   expect(d.sub.length).toEqual(42)
 })
 
 test('Get value inside another sub-object', () => {
-  const d = getPath(raw, '1.2.4:raw')
-  expect(getPath(d, '1:string')).toEqual('com.blizzard.wtcg.hearthstone')
-  expect(getPath(d, '5:string')).toEqual('Hearthstone')
-})
-
-test('Should throw an error on wrong getPath', () => {
-  expect(() => {
-    getPath(raw, '1.2.4.1:var')
-  }).toThrowError('Type wireType 2 does not support var. It should be one of these: raw, string, bytes, packedvar, packed32, packed64')
+  const d = getPath(raw, '1.2.4:raw').pop()
+  expect(getPath(d, '1:string').pop()).toEqual('com.blizzard.wtcg.hearthstone')
+  expect(getPath(d, '5:string').pop()).toEqual('Hearthstone')
 })
