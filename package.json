@@ -14,6 +14,7 @@
   "types": "./dist/protoquery.d.ts",
   "scripts": {
     "test": "vitest --run --globals --reporter verbose",
+    "test:watch": "vitest --globals --reporter verbose --ui",
     "build": "microbundle",
     "prepublishOnly": "npm run build"
   },
@@ -21,6 +22,7 @@
   "author": "David Konsumer <konsumer@jetboystudio.com>",
   "license": "MIT",
   "devDependencies": {
+    "@vitest/ui": "^1.5.1",
     "microbundle": "^0.15.1",
     "vitest": "^1.4.0"
   },

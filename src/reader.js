@@ -60,6 +60,7 @@ export function readLengthDelimited(buffer, position) {
 
 // this will read a packed array of varints (which will be encoded in a wiretype:2)
 export function readPackedVarint(buffer, position) {
+  console.log('packedVarInt', { buffer, position })
   const length = readVarint(buffer, position)
   let endPosition = position.offset + length
   const values = []
@@ -130,12 +131,12 @@ export function getTree(buf) {
   for (const f of reader(buf)) {
     if (f.wireType === 2) {
       try {
-        f.sub = getTree(f.data)
+        f.sub = getTree(f.data).sub
       } catch (e) {}
     }
     out.push(f)
   }
-  return out
+  return { sub: out, data: buf, position: { offset: 0 } }
 }
 
 const wireMap = {}
@@ -161,8 +162,9 @@ var, i32, u32, bool, f32
 i64, u64, double
 string, bytes, packedvar, packed32, packed64
 */
-export function getPath(raw, bytes, path) {
-  let current = raw
+export function getPath(raw, path) {
+  let current = raw.sub
+  const bytes = raw.data
   for (const l of path.split('.')) {
     let [n, t] = l.split(':')
     n = parseInt(n)
@@ -173,14 +175,14 @@ export function getPath(raw, bytes, path) {
     } else {
       current = c
       if (!wireMap[current.wireType].includes(t) && t !== 'raw') {
-        throw new Error(`Type wireType ${current.wireType} does not support ${t}. It should be one of these: ${wireMap[current.wireType].join(', ')}`)
+        throw new Error(`Type wireType ${current.wireType} does not support ${t}. It should be one of these: raw, ${wireMap[current.wireType].join(', ')}`)
       }
       switch (t) {
         case 'raw':
           return current
         case 'u32':
         case 'u64':
-        case 'varint':
+        case 'var':
         case 'bytes':
           return current.data
 
