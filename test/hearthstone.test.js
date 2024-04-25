@@ -10,8 +10,6 @@ import { getTree, getPath, readString } from '../src/reader.js'
 const pb = await readFile(join(dirname(fileURLToPath(import.meta.url)), 'hearthstone.bin'))
 const tree = getTree(pb)
 
-console.log(tree)
-
 test('Should throw an error on wrong getPath', () => {
   expect(() => {
     getPath(tree, '1.2.4.1:var')
