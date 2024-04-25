@@ -211,13 +211,13 @@ export function getPath(raw, path) {
   for (const l of path.split('.')) {
     let [n, t] = l.split(':')
     n = parseInt(n)
-    // TODO: need to process multiple paths here, since repeats are valid
-    const c = current.find((v) => v.fieldNumber === n)
-    if (!t) {
-      current = c.sub
-    } else {
-      current = c
-      out.push(handleField(current, t, bytes))
+    for (const c of current.filter((v) => v.fieldNumber === n)) {
+      if (!t) {
+        current = c.sub
+      } else {
+        current = c
+        out.push(handleField(current, t, bytes))
+      }
     }
   }
   return out
