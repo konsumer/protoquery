@@ -1,152 +1,188 @@
-const WIRE_TYPES = {
+const _dec = new TextDecoder()
+
+export class BufferReader {
+  constructor (buffer) {
+    this.buffer = buffer
+    this.offset = 0
+  }
+
+  readVarInt () {
+    let result = 0
+    let shift = 0
+    let byte
+
+    do {
+      if (this.offset >= this.buffer.byteLength) {
+        throw new Error('Buffer overflow while reading varint')
+      }
+      byte = this.buffer[this.offset++]
+      result |= (byte & 0x7f) << shift
+      shift += 7
+    } while (byte >= 0x80)
+    return result
+  }
+
+  readBuffer (length) {
+    this.checkByte(length)
+    const result = this.buffer.slice(this.offset, this.offset + length)
+    this.offset += length
+    return result
+  }
+
+  // gRPC has some additional header - remove it
+  trySkipGrpcHeader () {
+    const backupOffset = this.offset
+    if (this.buffer[this.offset] === 0 && this.leftBytes() >= 5) {
+      this.offset++
+      const length = (new DataView(this.buffer)).getInt32(this.offset, false)
+      this.offset += 4
+
+      if (length > this.leftBytes()) {
+        // Something is wrong, revert
+        this.offset = backupOffset
+      }
+    }
+  }
+
+  leftBytes () {
+    return this.buffer.length - this.offset
+  }
+
+  checkByte (length) {
+    const bytesAvailable = this.leftBytes()
+    if (length > bytesAvailable) {
+      throw new Error(
+        'Not enough bytes left. Requested: ' +
+          length +
+          ' left: ' +
+          bytesAvailable
+      )
+    }
+  }
+
+  checkpoint () {
+    this.savedOffset = this.offset
+  }
+
+  resetToCheckpoint () {
+    this.offset = this.savedOffset
+  }
+}
+
+export const TYPES = {
   VARINT: 0,
   FIXED64: 1,
-  LENGTH_DELIMITED: 2,
+  LENDELIM: 2,
+  GROUPSTART: 3,
+  GROUPEND: 4,
   FIXED32: 5
 }
 
-const _dec = new TextDecoder()
+export function getTree (buffer) {
+  const reader = new BufferReader(buffer)
+  const parts = []
 
-// this will read wireetype:0 (or any other varint, which is used in wiretype:2 for example)
-export function readVarint(buffer, position) {
-  let result = 0
-  let shift = 0
-  let byte,
-    offset = position.offset
+  reader.trySkipGrpcHeader()
 
-  do {
-    if (offset >= buffer.byteLength) {
-      throw new Error('Buffer overflow while reading varint')
+  try {
+    while (reader.leftBytes() > 0) {
+      reader.checkpoint()
+
+      const byteRange = [reader.offset]
+      const indexType = parseInt(reader.readVarInt())
+      const out = { type: indexType & 0b111, index: indexType >> 3, byteRange }
+      if (out.type === TYPES.VARINT) {
+        out.value = reader.readVarInt()
+      } else if (out.type === TYPES.LENDELIM) {
+        const length = parseInt(reader.readVarInt())
+        out.value = reader.readBuffer(length)
+      } else if (out.type === TYPES.FIXED32) {
+        out.value = reader.readBuffer(4)
+      } else if (out.type === TYPES.FIXED64) {
+        out.value = reader.readBuffer(8)
+      } else {
+        throw new Error('Unknown type: ' + out.type)
+      }
+      byteRange.push(reader.offset)
+
+      parts.push(out)
     }
-    byte = buffer[offset++]
-    result |= (byte & 0x7f) << shift
-    shift += 7
-  } while (byte >= 0x80)
-
-  position.offset = offset
-  return result
-}
-
-// this will read wiretype:1 as uint64
-export function readFixed64(buffer, position) {
-  if (position.offset + 8 > buffer.byteLength) {
-    throw new Error('Buffer overflow while reading fixed64')
+  } catch (err) {
+    reader.resetToCheckpoint()
   }
-  const value = new Number(new DataView(buffer.slice(position.offset, position.offset + 8)).getBigUint64())
-  position.offset += 8
-  return value
+
+  return {
+    parts,
+    leftOver: reader.readBuffer(reader.leftBytes())
+  }
 }
 
-// this will read wiretype:5 as uint32
-export function readFixed32(buffer, position) {
-  if (position.offset + 4 > buffer.byteLength) {
-    throw new Error('Buffer overflow while reading fixed32')
-  }
-  const value = new DataView(buffer.slice(position.offset, position.offset + 4)).getUint32()
-  position.offset += 4
-  return value
-}
+const bytes2int32 = b => (b[3] << 24) | (b[2] << 16) | (b[1] << 8) | b[0]
+const bytes2int64 = b => (b[7] << 56) | (b[6] << 48) | (b[5] << 40) | (b[4] << 32) | (b[3] << 24) | (b[2] << 16) | (b[1] << 8) | b[0]
 
-// this will read wiretype:2
-export function readLengthDelimited(buffer, position) {
-  const length = readVarint(buffer, position)
-  if (position.offset + length > buffer.byteLength) {
-    throw new Error('Buffer overflow while reading length-delimited data')
-  }
-  const value = buffer.slice(position.offset, position.offset + length)
-  position.offset += length
-  return value
-}
+// utilities for processing treebranches
 
 // this will read a packed array of varints (which will be encoded in a wiretype:2)
-export function readPackedVarint(buffer, position) {
-  const length = readVarint(buffer, position)
-  let endPosition = position.offset + length
+export function readPackedVarint (treebranch) {
+  if (treebranch.type !== 2) {
+    throw new Error('Wiretype must be 2 for packed varints.')
+  }
   const values = []
-  while (position.offset < endPosition) {
-    values.push(readVarint(buffer, position))
+  const b = new BufferReader(treebranch.value)
+
+  while (b.offset < treebranch.value.length) {
+    values.push(b.readVarInt())
   }
   return values
 }
 
 // this will read a packed array of fixed32s (which will be encoded in a wiretype:2)
-export function readPackedFixed32(buffer, position) {
-  const length = readVarint(buffer, position)
-  let endPosition = position.offset + length
+export function readPackedInt32 (treebranch) {
+  if (treebranch.type !== 2) {
+    throw new Error('Wiretype must be 2 for packed varints.')
+  }
   const values = []
-  while (position.offset < endPosition) {
-    values.push(readFixed32(buffer, position))
+  const b = new BufferReader(treebranch.value)
+
+  while (b.offset < treebranch.value.length) {
+    values.push(bytes2int32(b.readBuffer(4)))
   }
   return values
 }
 
 // this will read a packed array of fixed64s (which will be encoded in a wiretype:2)
-export function readPackedFixed64(buffer, position) {
-  const length = readVarint(buffer, position)
-  let endPosition = position.offset + length
+export function readPackedInt64 (treebranch) {
+  if (treebranch.type !== 2) {
+    throw new Error('Wiretype must be 2 for packed varints.')
+  }
   const values = []
-  while (position.offset < endPosition) {
-    values.push(readFixed64(buffer, position))
+  const b = new BufferReader(treebranch.value)
+
+  while (b.offset < treebranch.value.length) {
+    values.push(bytes2int64(b.readBuffer(8)))
   }
   return values
 }
 
-export function readString(buffer) {
-  return _dec.decode(buffer)
-}
-
-export default function* reader(buf) {
-  const buffer = new Uint8Array(buf)
-  let position = { offset: 0 }
-
-  while (position.offset < buffer.byteLength) {
-    const tag = readVarint(buffer, position)
-    const fieldNumber = tag >> 3
-    const wireType = tag & 0x07
-    const p = position.offset
-
-    switch (wireType) {
-      case WIRE_TYPES.VARINT:
-        yield { fieldNumber, wireType, data: readVarint(buffer, position), position: { offset: p }, dataByteLength: position.offset - p }
-        break
-      case WIRE_TYPES.FIXED64:
-        yield { fieldNumber, wireType, data: readFixed64(buffer, position), position: { offset: p }, dataByteLength: position.offset - p }
-        break
-      case WIRE_TYPES.LENGTH_DELIMITED:
-        yield { fieldNumber, wireType, data: readLengthDelimited(buffer, position), position: { offset: p }, dataByteLength: position.offset - p }
-        break
-      case WIRE_TYPES.FIXED32:
-        yield { fieldNumber, wireType, data: readFixed32(buffer, position), position: { offset: p }, dataByteLength: position.offset - p }
-        break
-      default:
-        throw new Error(`Unsupported wire type: ${wireType}`)
-    }
+// this will read a string (which will be encoded in a wiretype:2)
+export function readString (treebranch) {
+  if (treebranch.type !== 2) {
+    throw new Error('Wiretype must be 2 for strings.')
   }
-}
-
-// builds a first pass tree with initial values
-export function getTree(buf) {
-  const out = []
-  for (const f of reader(buf)) {
-    if (f.wireType === 2) {
-      try {
-        f.sub = getTree(f.data).sub
-      } catch (e) {}
-    }
-    out.push(f)
-  }
-  return { sub: out, data: buf, position: { offset: 0 } }
+  return _dec.decode(new Uint8Array(treebranch.value))
 }
 
 const wireMap = {}
-wireMap[WIRE_TYPES.VARINT] = ['var']
-wireMap[WIRE_TYPES.FIXED64] = ['i64', 'u64', 'double']
-wireMap[WIRE_TYPES.LENGTH_DELIMITED] = ['string', 'bytes', 'packedvar', 'packed32', 'packed64']
-wireMap[WIRE_TYPES.FIXED32] = ['i32', 'u32', 'bool', 'f32']
+wireMap[TYPES.VARINT] = ['var']
+wireMap[TYPES.FIXED64] = ['i64', 'u64', 'double']
+wireMap[TYPES.LENDELIM] = ['string', 'bytes', 'packedvar', 'packed32', 'packed64']
+wireMap[TYPES.GROUPSTART] = []
+wireMap[TYPES.GROUPEND] = []
+wireMap[TYPES.FIXED32] = ['i32', 'u32', 'bool', 'f32']
 
-function handleField(current, t, bytes) {
-  if (!wireMap[current.wireType].includes(t) && t !== 'raw') {
-    throw new Error(`Type wireType ${current.wireType} does not support ${t}. It should be one of these: raw, ${wireMap[current.wireType].join(', ')}`)
+function handleField (current, t) {
+  if (!wireMap[current.type].includes(t) && t !== 'raw') {
+    throw new Error(`Type ${current.type} does not support ${t}. It should be one of these: raw, ${wireMap[current.type].join(', ')}`)
   }
 
   switch (t) {
@@ -156,69 +192,82 @@ function handleField(current, t, bytes) {
     case 'u64':
     case 'var':
     case 'bytes':
-      return current.data
+      return current.value
 
     case 'i32':
-      return new DataView(current.data).getInt32(current.position.offset, true)
+      return new DataView(current.value).getInt32(0, true)
 
     case 'bool':
-      return !!current.data
+      return !!current.value
 
     case 'i64':
-      return new DataView(current.data).getBigInt64(current.position.offset, true)
+      return new DataView(current.value).getBigInt64(0, true)
 
     case 'f32':
-      return new DataView(current.data).getFloat32(current.position.offset, true)
+      return new DataView(current.value).getFloat32(0, true)
 
     case 'double':
-      return new DataView(current.data).getFloat64(current.position.offset, true)
+      return new DataView(current.value).getFloat64(0, true)
 
     case 'string':
-      return readString(current.data)
+      return readString(current)
 
     case 'packedvar':
-      return readPackedVarint(bytes, current.position)
+      return readPackedVarint(current)
 
     case 'packed32':
-      return readPackedFixed32(bytes, current.position)
+      return readPackedInt32(current)
 
     case 'packed64':
-      return readPackedFixed64(bytes, current.position)
+      return readPackedInt64(current)
   }
 }
 
-/*
-This will parse paths to get values from a tree (use getTree())
-Some examples:
+// lazily evaluate query on a tree
+export function query (tree, path, choices = {}, prefix = '') {
+  if (typeof choices === 'string') {
+    if (!prefix) {
+      prefix = choices
+      choices = {}
+    } else {
+      throw new Error('Usage: query(tree, choices={}, path="X.X.X") or query(tree, path="X.X.X")')
+    }
+  }
 
-1.2.4.5:string
-4.4.4:f32
+  // this allows you to override type in path, but also will apply type-choice & prefix
+  let [p, type] = path.split(':')
+  if (!type) {
+    if (prefix) {
+      p = `${prefix}.${p}`
+    }
+    if (choices[p]) {
+      type = choices[p]
+    } else {
+      type = 'raw'
+    }
+  }
 
-path should start at top of raw-tree
-value-type must be at end of path
+  // now type is the type of value to pull, and p is the path, from the top
 
-possible value-types:
-
-raw
-var, i32, u32, bool, f32
-i64, u64, double
-string, bytes, packedvar, packed32, packed64
-*/
-export function getPath(raw, path) {
-  let current = raw.sub
-  const bytes = raw.data
+  let current = tree
   const out = []
-  for (const l of path.split('.')) {
-    let [n, t] = l.split(':')
-    n = parseInt(n)
-    for (const c of current.filter((v) => v.fieldNumber === n)) {
-      if (!t) {
-        current = c.sub
-      } else {
-        current = c
-        out.push(handleField(current, t, bytes))
+  const pp = p.split('.')
+  const pl = pp.length - 1
+
+  for (const l in pp) {
+    const pc = parseInt(l)
+    const n = parseInt(pp[pc])
+
+    if (current.parts) {
+      for (const c of current.parts.filter((v) => v.index === n)) {
+        if (pc === pl) {
+          out.push(handleField(c, type))
+        } else {
+          current = getTree(c.value)
+        }
       }
     }
   }
+
   return out
 }

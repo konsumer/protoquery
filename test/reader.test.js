@@ -1,54 +1,50 @@
 // tests to verify results from hand-parsing:
 // https://protobuf.dev/programming-guides/encoding/
 
-import reader, { readPackedVarint, readString } from '../src/reader.js'
+// queries are better, but some utils are also exposed, and you can use em, if you want
+
+/* global test expect */
+
+import { getTree, readPackedVarint, readString } from '../src/reader.js'
 
 test('A Simple Message', () => {
   /*
     1: 150
   */
-  const b = new Uint8Array([0x08, 0x96, 0x01])
-  for (const { fieldNumber, wireType, dataByteLength, data } of reader(b)) {
-    expect(fieldNumber).toEqual(1)
-    expect(wireType).toEqual(0)
-    expect(dataByteLength).toEqual(2)
-    // type is 0 (varint) and dataByteLength is <= 4 (int32) so it's safe to read as number (int53)
-    expect(Number(data)).toEqual(150)
-  }
+  const tree = getTree([0x08, 0x96, 0x01])
+  expect(tree.parts.length).toEqual(1)
+  expect(tree.parts[0].byteRange).toEqual([0, 3])
+  expect(tree.parts[0].index).toEqual(1)
+  expect(tree.parts[0].type).toEqual(0)
+  expect(tree.parts[0].value).toEqual(150)
 })
 
 test('Length-Delimited Records', () => {
   /*
     2: {"testing"}
   */
-  const b = new Uint8Array([0x12, 0x07, 0x74, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67])
-  for (const { fieldNumber, wireType, dataByteLength, data } of reader(b)) {
-    expect(fieldNumber).toEqual(2)
-    expect(wireType).toEqual(2)
-    expect(dataByteLength).toEqual(8)
-    // wiretype is 2 (len) and I know it's a "string" so parse it like that
-    expect(readString(data)).toEqual('testing')
-  }
+  const tree = getTree([0x12, 0x07, 0x74, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67])
+  expect(tree.parts.length).toEqual(1)
+  expect(tree.parts[0].index).toEqual(2)
+  expect(tree.parts[0].type).toEqual(2)
+  expect(readString(tree.parts[0])).toEqual('testing')
 })
 
 test('Submessages', () => {
   /*
     3: {1: 150}
   */
-  const b = new Uint8Array([0x1a, 0x03, 0x08, 0x96, 0x01])
-  for (const { fieldNumber, wireType, dataByteLength, data } of reader(b)) {
-    expect(fieldNumber).toEqual(3)
-    expect(wireType).toEqual(2)
-    expect(dataByteLength).toEqual(4)
-    // we know this is a sub-message, so parse it
-    for (const s of reader(data)) {
-      expect(s.fieldNumber).toEqual(1)
-      expect(s.wireType).toEqual(0)
-      expect(s.dataByteLength).toEqual(2)
-      // type is 0 (varint) and dataByteLength is <= 4 (int32) so it's safe to read as number (int53)
-      expect(Number(s.data)).toEqual(150)
-    }
-  }
+  const tree = getTree([0x1a, 0x03, 0x08, 0x96, 0x01])
+  expect(tree.parts.length).toEqual(1)
+  expect(tree.parts[0].index).toEqual(3)
+  expect(tree.parts[0].type).toEqual(2)
+
+  const s = getTree(tree.parts[0].value)
+  expect(s.parts.length).toEqual(1)
+  expect(s.parts[0].byteRange).toEqual([0, 3])
+  expect(s.parts[0].type).toEqual(0)
+  expect(s.parts[0].index).toEqual(1)
+  expect(s.parts[0].value).toEqual(150)
 })
 
 test('Repeated Elements', () => {
@@ -58,32 +54,25 @@ test('Repeated Elements', () => {
     5: 2
     5: 3
   */
-  const b = new Uint8Array([0x22, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x28, 0x01, 0x28, 0x02, 0x28, 0x03])
-  const counts = { 4: 0, 5: 0 }
-  for (const { fieldNumber, wireType, dataByteLength, data } of reader(b)) {
-    counts[fieldNumber]++
-    if (fieldNumber === 5) {
-      expect(wireType).toEqual(0)
-    }
-    if (fieldNumber === 4) {
-      expect(wireType).toEqual(2)
-      expect(dataByteLength).toEqual(6)
-      expect(readString(data)).toEqual('hello')
-    }
-  }
-  expect(counts[4]).toEqual(1)
-  expect(counts[5]).toEqual(3)
+  const tree = getTree([0x22, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x28, 0x01, 0x28, 0x02, 0x28, 0x03])
+  expect(tree.parts.length).toEqual(4)
+  expect(tree.parts[0].index).toEqual(4)
+  expect(readString(tree.parts[0])).toEqual('hello')
+  expect(tree.parts[1].index).toEqual(5)
+  expect(tree.parts[1].value).toEqual(1)
+  expect(tree.parts[2].index).toEqual(5)
+  expect(tree.parts[2].value).toEqual(2)
+  expect(tree.parts[3].index).toEqual(5)
+  expect(tree.parts[3].value).toEqual(3)
 })
 
 test('Packed Repeated Fields', () => {
   /*
-    6: {3 270 86942}
+    6: {5 270 86942}
   */
-  const b = new Uint8Array([0x32, 0x06, 0x03, 0x8e, 0x02, 0x9e, 0xa7, 0x05])
-  for (const { fieldNumber, wireType, dataByteLength, data, position } of reader(b)) {
-    expect(fieldNumber).toEqual(6)
-    // format can't be guessed (it could be any wiretype:2) but I include helpers to get values
-    const values = readPackedVarint(b, position)
-    expect(values).toEqual([3, 270, 86942])
-  }
+  const tree = getTree([0x32, 0x06, 0x05, 0x8e, 0x02, 0x9e, 0xa7, 0x05])
+  expect(tree.parts.length).toEqual(1)
+  expect(tree.parts[0].index).toEqual(6)
+  expect(tree.parts[0].type).toEqual(2)
+  expect(readPackedVarint(tree.parts[0])).toEqual([5, 270, 86942])
 })

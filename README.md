@@ -3,7 +3,7 @@
 
 Very small raw protobuf query-parser.
 
-This is similar to [rawprotoparse](https://github.com/konsumer/rawprotoparse), but allows you to run queries that just parse what you want to read.
+This is similar to [rawprotoparse](https://github.com/konsumer/rawprotoparse), but allows you to run queries that just parse what you want to read. I will probably merge these all, at some point.
 
 ## query language
 
@@ -121,35 +121,23 @@ You can get the structure of the data with another library (like [rawprotoparse]
 
 ```
 {
-  sub: [
+  parts: [
     {
-      fieldNumber: 1,
-      wireType: 2,
-      data: [Uint8Array],
-      position: [Object],
-      dataByteLength: 15536,
-      sub: [Array]
+      type: 2,
+      index: 1,
+      byteRange: [Array],
+      value: <Buffer 12 ab 79 22 89 77 0a 1d 63 6f 6d 2e 62 6c 69 7a 7a 61 72 64 2e 77 74 63 67 2e 68 65 61 72 74 68 73 74 6f 6e 65 12 1d 63 6f 6d 2e 62 6c 69 7a 7a 61 72 ... 15484 more bytes>
     },
+    { type: 2, index: 5, byteRange: [Array], value: <Buffer 08 6d> },
     {
-      fieldNumber: 5,
-      wireType: 2,
-      data: [Uint8Array],
-      position: [Object],
-      dataByteLength: 3,
-      sub: [Array]
-    },
-    {
-      fieldNumber: 9,
-      wireType: 2,
-      data: [Uint8Array],
-      position: [Object],
-      dataByteLength: 31,
-      sub: [Array]
+      type: 2,
+      index: 9,
+      byteRange: [Array],
+      value: <Buffer 08 12 9a 01 19 0a 13 08 9c 92 cb fa fd e0 84 03 15 8b 44 05 00 1d bb 2d 05 8d 10 01 20 00>
     }
   ],
-  data: <Buffer 0a ae 79 12 ab 79 22 89 77 0a 1d 63 6f 6d 2e 62 6c 69 7a 7a 61 72 64 2e 77 74 63 67 2e 68 65 61 72 74 68 73 74 6f 6e 65 12 1d 63 6f 6d 2e 62 6c 69 7a ... 15523 more bytes>,
-  position: { offset: 0 }
+  leftOver: <Buffer >
 }
 ```
 
-You can use that `wireType`/`fieldNumber` to figure it out, and `sub` includes the sub-root for 2 (`LEN`) fields.
+You can use that `type`/`index` to figure it out, and `value` includes the sub-root for 2 (`LEN`) fields, as binary (so you can use `getTree` on it.)

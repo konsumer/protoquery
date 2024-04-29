@@ -18,11 +18,20 @@
     "build": "microbundle",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["protobuf", "raw", "parse", "decode", "query", "reverse-engineer", "binary"],
+  "keywords": [
+    "protobuf",
+    "raw",
+    "parse",
+    "decode",
+    "query",
+    "reverse-engineer",
+    "binary"
+  ],
   "author": "David Konsumer <konsumer@jetboystudio.com>",
   "license": "MIT",
   "devDependencies": {
     "@vitest/ui": "^1.5.1",
+    "astray": "^1.1.1",
     "microbundle": "^0.15.1",
     "vitest": "^1.4.0"
   },
@@ -34,5 +43,10 @@
     "type": "git",
     "url": "git+https://github.com/konsumer/protoquery.git"
   },
-  "files": ["dist/*"]
+  "files": [
+    "dist/*"
+  ],
+  "dependencies": {
+    "flat": "^6.0.1"
+  }
 }
