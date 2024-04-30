@@ -29,7 +29,6 @@ test('Get title with query', () => {
   expect(query(appTree, '5:string').pop()).toEqual('Hearthstone')
 })
 
-// TODO: this should return several types/url
 test('field with groups (media)', () => {
   // this gets more but is till not right
   const medias = query(appTree, '10:bytes').map(i => {
