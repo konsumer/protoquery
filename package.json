@@ -1,6 +1,6 @@
 {
   "name": "protoquery",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Query raw protobuf",
   "type": "module",
   "source": "src/reader.js",
