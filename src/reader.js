@@ -1,5 +1,14 @@
 const _dec = new TextDecoder()
 
+export const TYPES = {
+  VARINT: 0,
+  FIXED64: 1,
+  LENDELIM: 2,
+  GROUPSTART: 3,
+  GROUPEND: 4,
+  FIXED32: 5
+}
+
 export class BufferReader {
   constructor (buffer) {
     this.buffer = buffer
@@ -20,6 +29,25 @@ export class BufferReader {
       shift += 7
     } while (byte >= 0x80)
     return result
+  }
+
+  readBufferUntilGroupEnd (index) {
+    const offsetStart = this.offset
+    let indexType = parseInt(this.readVarInt())
+    let type = indexType & 0b111
+    let foundIndex = index
+
+    while (type !== TYPES.GROUPEND) {
+      indexType = parseInt(this.readVarInt())
+      type = indexType & 0b111
+      foundIndex = indexType >> 3
+    }
+
+    if (foundIndex !== index) {
+      throw new Error(`Group index ${foundIndex} should match ${index}`)
+    }
+
+    return this.buffer.slice(offsetStart, this.offset)
   }
 
   readBuffer (length) {
@@ -69,15 +97,6 @@ export class BufferReader {
   }
 }
 
-export const TYPES = {
-  VARINT: 0,
-  FIXED64: 1,
-  LENDELIM: 2,
-  GROUPSTART: 3,
-  GROUPEND: 4,
-  FIXED32: 5
-}
-
 export function getTree (buffer) {
   const reader = new BufferReader(buffer)
   const parts = []
@@ -100,6 +119,8 @@ export function getTree (buffer) {
         out.value = reader.readBuffer(4)
       } else if (out.type === TYPES.FIXED64) {
         out.value = reader.readBuffer(8)
+      } else if (out.type === TYPES.GROUPSTART) {
+        out.value = reader.readBufferUntilGroupEnd(out.index)
       } else {
         throw new Error('Unknown type: ' + out.type)
       }
