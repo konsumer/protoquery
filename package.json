@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "Query raw protobuf",
   "type": "module",
-  "source": "src/protoquery.js",
+  "source": "src/reader.js",
   "exports": {
     "require": "./dist/protoquery.cjs",
     "default": "./dist/protoquery.modern.js"
