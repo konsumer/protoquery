@@ -52,7 +52,7 @@ test('field with groups (media)', () => {
   expect(videoThumbs).toEqual(['https://i.ytimg.com/vi/XT7YEb9_Muw/hqdefault.jpg'])
 
   /*
-  // I should be able to query liek this, but it does not find the repeatsss correctly
+  // TODO: I should be able to query like this, but it does not find the repeats, correctly. Maybe should fix later
   const types = query(appTree, '10.1:var')
   const urls = query(appTree, '10.5:string')
   console.log(types, urls)
