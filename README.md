@@ -117,7 +117,7 @@ message Level4 {
 
 Now, pretend we don't know the structure, this is just reversed from the shape of the data (`1.2.4.1` is `id` for example.)
 
-You can get the structure of the data with another library (like [rawprotoparse](https://github.com/konsumer/rawprotoparse) or just look at the tree:
+You can get the structure of the data with another library (like [rawprotoparse](https://github.com/konsumer/rawprotoparse)) or just look at the tree:
 
 ```
 {
