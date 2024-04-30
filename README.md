@@ -7,7 +7,7 @@ This is similar to [rawprotoparse](https://github.com/konsumer/rawprotoparse), b
 
 ## query language
 
-Queries are a series of field-numbers to traverse, then the desired output value. The reson for this is that every protobuf wiretype can actually be several different formats. That is sort of the purpose of this library, since guessing will only get you so far, but pulling with queries, you can get any data you want, in the correct format.
+Queries are a series of field-numbers to traverse, then the desired output value. The reason for this is that every protobuf wiretype can actually be several different formats. That is sort of the purpose of this library, since guessing will only get you so far, but pulling with queries, you can get any data you want, in the correct format.
 
 There are a couple rules:
 
