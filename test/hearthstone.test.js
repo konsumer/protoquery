@@ -29,4 +29,20 @@ test('Get title with query', () => {
   expect(query(appTree, '5:string').pop()).toEqual('Hearthstone')
 })
 
-// TODO: test for multiple matches, like media fields
+// TODO: this should return several types/url
+test('media fields', () => {
+  /*
+  // this gets more but is till not right
+  const medias = query(appTree, '10:bytes').map(i => {
+    const t = getTree(i)
+    return {
+      type: query(t, '1:var'),
+      url: query(t, '5:string')
+    }
+  })
+  console.log(medias)
+  */
+  const types = query(appTree, '10.1:var')
+  const urls = query(appTree, '10.5:string')
+  console.log(types, urls)
+})
