@@ -1,5 +1,5 @@
 > [!CAUTION]
-> I am still working on this.
+> This has been depracated, in favor of [rawproto](https://github.com/konsumer/rawproto), where I did similar, but improved the query-engine a bit. You should use that.
 
 Very small raw protobuf query-parser.
 
